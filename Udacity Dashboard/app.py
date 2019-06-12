@@ -5,8 +5,7 @@ import map
 
 app = Flask(__name__, static_url_path='/static')
 
-fig = map.generate_graph()
-
 @app.route('/')
 def index():
+    fig = map.generate_graph()
     return render_template('home.html', fig=fig)
