@@ -1,1 +1,1 @@
-web: gunicorn wheretopark:app
+web gunicorn wheretopark:app
