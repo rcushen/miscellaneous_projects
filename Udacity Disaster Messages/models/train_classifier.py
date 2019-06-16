@@ -14,8 +14,7 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.naive_bayes import GaussianNB
 
 def load_data(database_filepath):
-    engine_location = 'sqlite:///' + database_filepath
-    engine = create_engine(engine_location, echo=False)
+    engine = create_engine('sqlite:///' + database_filepath, echo=False)
     df = pd.read_sql('SELECT * FROM DisasterResponse', con=engine)
     X = tokenize(df['message'].values)
     Y = df[df.columns[5:]].values

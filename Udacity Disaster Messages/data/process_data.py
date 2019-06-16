@@ -6,11 +6,10 @@ from sqlalchemy import create_engine
 def load_data(messages_filepath, categories_filepath):
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
-
     messages.drop_duplicates(subset='id', keep='first', inplace=True)
     categories.drop_duplicates(subset='id', keep='first', inplace=True)
-
-    return messages.merge(categories, how='left', on='id')
+    combined_dataset = messages.merge(categories, how='left', on='id')
+    return combined_dataset
 
 def clean_data(df):
     expanded_categories = df.categories.str.split(pat=';', expand=True)
@@ -22,7 +21,8 @@ def clean_data(df):
         expanded_categories[col] = expanded_categories[col].replace(to_replace=2, value=1)
 
     df = df.drop(['categories'], axis=1)
-    return df.merge(expanded_categories, left_index=True, right_index=True)
+    cleaned_dataset = df.merge(expanded_categories, left_index=True, right_index=True)
+    return cleaned_dataset
 
 def save_data(df, database_filename):
     engine_location = 'sqlite:///' + database_filename
