@@ -1,6 +1,7 @@
-import pandas as pd
-from sqlalchemy import create_engine
 import sys
+import pandas as pd
+
+from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
     messages = pd.read_csv(messages_filepath)
@@ -17,7 +18,8 @@ def clean_data(df):
     expanded_categories.columns = colnames
 
     for col in expanded_categories.columns:
-        expanded_categories[col] = expanded_categories[col].str.extract('-(\d)')
+        expanded_categories[col] = expanded_categories[col].str.extract('-(\d)').astype(int)
+        expanded_categories[col] = expanded_categories[col].replace(to_replace=2, value=1)
 
     df = df.drop(['categories'], axis=1)
     return df.merge(expanded_categories, left_index=True, right_index=True)
@@ -25,7 +27,7 @@ def clean_data(df):
 def save_data(df, database_filename):
     engine_location = 'sqlite:///' + database_filename
     engine = create_engine(engine_location, echo=False)
-    df.to_sql(database_filename[:-3], con=engine)
+    df.to_sql('DisasterResponse', con=engine, if_exists='replace')
 
 def main():
     if len(sys.argv) == 4:
@@ -50,7 +52,6 @@ def main():
               'to as the third argument. \n\nExample: python process_data.py '\
               'disaster_messages.csv disaster_categories.csv '\
               'DisasterResponse.db')
-
 
 if __name__ == '__main__':
     main()

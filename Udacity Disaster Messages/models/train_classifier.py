@@ -1,25 +1,46 @@
 import sys
+import pandas as pd
+import numpy as np
 
+from sqlalchemy import create_engine
+from joblib import dump
+
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.naive_bayes import GaussianNB
 
 def load_data(database_filepath):
-    pass
-
+    engine_location = 'sqlite:///' + database_filepath
+    engine = create_engine(engine_location, echo=False)
+    df = pd.read_sql('SELECT * FROM DisasterResponse', con=engine)
+    X = tokenize(df['message'].values)
+    Y = df[df.columns[5:]].values
+    category_names = df['genre'].values
+    return X, Y, category_names
 
 def tokenize(text):
-    pass
-
+    vectorizer = TfidfVectorizer(
+        strip_accents='unicode',
+        stop_words='english',
+        max_features=10000)
+    doc_matrix = vectorizer.fit_transform(text)
+    dump(vectorizer, 'data/vectorizer.joblib')
+    return doc_matrix.todense()
 
 def build_model():
-    pass
-
+    return OneVsRestClassifier(GaussianNB())
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    pass
-
+    preds = model.predict(X_test)
+    accuracy = np.mean(preds == Y_test)
+    print(accuracy)
 
 def save_model(model, model_filepath):
-    pass
-
+    dump(model, model_filepath)
 
 def main():
     if len(sys.argv) == 3:
@@ -27,13 +48,13 @@ def main():
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
         X, Y, category_names = load_data(database_filepath)
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
-        
+
         print('Building model...')
         model = build_model()
-        
+
         print('Training model...')
         model.fit(X_train, Y_train)
-        
+
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)
 
