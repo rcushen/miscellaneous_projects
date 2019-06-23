@@ -38,7 +38,11 @@ model = joblib.load("models/model.joblib")
 # vectorizer = joblib.load("../models/vectorizer.joblib")
 vectorizer = joblib.load("models/vectorizer.joblib")
 
+category_counts = df.iloc[:,5:].values.sum(axis=0).tolist()
+categories = list(df.columns[5:])
 
+message_type_counts = df['original'].isnull().value_counts().tolist()
+message_type = ['English', 'Translated']
 
 # index webpage displays cool visuals and receives user input text for model
 @app.route('/')
@@ -69,6 +73,31 @@ def index():
                 'xaxis': {
                     'title': "Genre"
                 }
+            }
+        },
+        {
+            'data': [{
+                'type': 'pie',
+                'labels': categories,
+                'values': category_counts,
+                'textinfo': 'none'
+            }
+            ],
+
+            'layout': {
+                'title': 'Distribution of Message Categories',
+            }
+        },
+        {
+            'data': [{
+                'type': 'pie',
+                'labels': message_type,
+                'values': message_type_counts
+            }
+            ],
+
+            'layout': {
+                'title': 'Types of Messages',
             }
         }
     ]

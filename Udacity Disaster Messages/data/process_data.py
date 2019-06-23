@@ -1,5 +1,6 @@
 import sys
 import pandas as pd
+import re
 
 from sqlalchemy import create_engine
 
@@ -12,7 +13,7 @@ def load_data(messages_filepath, categories_filepath):
     return combined_dataset
 
 def clean_data(df):
-    expanded_categories = df.categories.str.split(pat=';', expand=True)
+    expanded_categories = df['categories'].str.split(pat=';', expand=True)
     colnames = [var.split('-')[0] for var in expanded_categories.iloc[0,:].tolist()]
     expanded_categories.columns = colnames
 
@@ -22,6 +23,11 @@ def clean_data(df):
 
     df = df.drop(['categories'], axis=1)
     cleaned_dataset = df.merge(expanded_categories, left_index=True, right_index=True)
+
+    def strip_url(string):
+        return re.sub('www\\..+\\.', '', string)
+
+    cleaned_dataset['message'] = cleaned_dataset['message'].map(strip_url)
     return cleaned_dataset
 
 def save_data(df, database_filename):
