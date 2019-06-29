@@ -3,41 +3,43 @@ import joblib
 import plotly
 import pandas as pd
 
+from nltk import word_tokenize
+from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
+stop_words = stopwords.words('english')
 
 from flask import Flask
 from flask import render_template, request, jsonify
 from plotly.graph_objs import Bar
 from sqlalchemy import create_engine
 
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.svm import LinearSVC
 
 app = Flask(__name__)
 
-# def tokenize(text):
-#     tokens = word_tokenize(text)
-#     lemmatizer = WordNetLemmatizer()
-#
-#     clean_tokens = []
-#     for tok in tokens:
-#         clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-#         clean_tokens.append(clean_tok)
-#
-#     return clean_tokens
+def tokenize(tweet):
+    '''
+    INPUT: a string tweet
+    OUTPUT: a normalised, tokenised and lemmatized version of the tweet
+    '''
+    tokens = word_tokenize(tweet)
+    words = [w.lower() for w in tokens if w.isalpha() and w not in stop_words]
+    lemmatizer = WordNetLemmatizer()
+    stemmed_words = [lemmatizer.lemmatize(w) for w in words ]
+    return words
 
 # load data
-# engine = create_engine('sqlite:///../data/DisasterResponse.db')
 engine = create_engine('sqlite:///data/DisasterResponse.db')
 df = pd.read_sql_table('DisasterResponse', engine)
 
 # load model
-# model = joblib.load("../models/model.joblib")
 model = joblib.load("models/model.joblib")
 
-# load tweet vectorizer
-# vectorizer = joblib.load("../models/vectorizer.joblib")
-vectorizer = joblib.load("models/vectorizer.joblib")
-
+# calculate some statistics for summary visuals
 category_counts = df.iloc[:,5:].values.sum(axis=0).tolist()
 categories = list(df.columns[5:])
 
@@ -117,9 +119,9 @@ def go():
     query = request.args.get('query', '')
 
     # use model to predict classification for query
-    vectorized_query = vectorizer.transform([query]).todense()
-    classification_labels = model.predict(vectorized_query)[0]
+    classification_labels = model.predict([query])[0]
     classification_results = dict(zip(df.columns[5:], classification_labels))
+
     # This will render the go.html Please see that file.
     return render_template(
         'go.html',

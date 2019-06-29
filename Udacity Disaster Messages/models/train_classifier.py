@@ -5,41 +5,63 @@ import numpy as np
 from sqlalchemy import create_engine
 from joblib import dump
 
+from nltk import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+stop_words = stopwords.words('english')
+
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import classification_report
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
 from sklearn.multiclass import OneVsRestClassifier
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 
+def tokenize(tweet):
+    '''
+    INPUT: a string tweet
+    OUTPUT: a normalised, tokenised and lemmatized version of the tweet
+    '''
+    tokens = word_tokenize(tweet)
+    words = [w.lower() for w in tokens if w.isalpha() and w not in stop_words]
+    lemmatizer = WordNetLemmatizer()
+    stemmed_words = [lemmatizer.lemmatize(w) for w in words ]
+    return words
 
 def load_data(database_filepath):
+    '''
+    INPUT: the filepath of the cleaned tweet database
+    OUTPUT: a tuple with X and Y data matrices, as well as the tweet categories
+    '''
     engine = create_engine('sqlite:///' + database_filepath, echo=False)
     df = pd.read_sql('SELECT * FROM DisasterResponse', con=engine)
-    X = tokenize(df['message'].values)
+    X = df['message'].values
     Y = df[df.columns[5:]].values
-    category_names = df['genre'].values
+    category_names = list(df.columns[5:])
     return X, Y, category_names
 
-def tokenize(text):
-    vectorizer = TfidfVectorizer(
-        strip_accents='unicode',
-        stop_words='english',
-        max_features=10000)
-    doc_matrix = vectorizer.fit_transform(text)
-    dump(vectorizer, 'data/vectorizer.joblib')
-    return doc_matrix.todense()
-
-def build_models():
-    models = {
-        'naive_bayes': OneVsRestClassifier(MultinomialNB()),
-        'logistic_reg': OneVsRestClassifier(LogisticRegression(solver='lbfgs')),
-        'linear_svc': OneVsRestClassifier(LinearSVC(dual=False))
+def build_model():
+    '''
+    OUTPUT: a GridSearCV object, wrapping a pipeline containing:
+     - a CountVectorizer that uses the predefined tokenize funcion
+     - a TfidfTransformer that transforms the vectorized text
+     - a LinearSVC model wrapped in a OneVsRestClassifier
+    '''
+    pipeline = Pipeline([('cvect', CountVectorizer(tokenizer=tokenize,
+                                                    strip_accents='ascii',
+                                                    max_features=10000)),
+                         ('tfidf', TfidfTransformer()),
+                         ('clf', OneVsRestClassifier(LinearSVC(dual=False)))])
+    param_grid = {
+        'clf__estimator__C': [1, 0.01, 0.001],
+        'clf__estimator__tol': [0.001, 0.0001, 0.00001]
     }
-    return models
+    search = GridSearchCV(pipeline, param_grid, iid=False, cv=3, verbose=1)
+    return search
 
 def evaluate_model(model, X_test, Y_test):
     preds = model.predict(X_test)
@@ -47,6 +69,9 @@ def evaluate_model(model, X_test, Y_test):
     return accuracy
 
 def save_model(model, model_filepath):
+    '''
+    INPUT: a model/pipeline object and the path to save it to
+    '''
     dump(model, model_filepath)
 
 def main():
@@ -57,30 +82,21 @@ def main():
         X, Y, category_names = load_data(database_filepath)
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3)
 
-        print('Building models...')
-        models = build_models()
+        print('Building model...')
+        model = build_model()
 
-        print('Training models...')
-        for model in models:
-            print('\t...training {}'.format(model))
-            models[model].fit(X_train, Y_train)
+        print('Training model...')
+        model.fit(X_train, Y_train)
 
         print('Evaluating models...')
-        results = {
-            'naive_bayes': evaluate_model(models['naive_bayes'], X_test, Y_test),
-            'logistic_reg': evaluate_model(models['logistic_reg'], X_test, Y_test),
-            'linear_svc': evaluate_model(models['linear_svc'], X_test, Y_test)
-        }
-        for key, val in results.items():
-            print('\t {} - {}'.format(key, val))
+        test_preds = model.predict(X_test)
+        for col in range(test_preds.shape[1]):
+            score = classification_report(Y_test[:,col], test_preds[:,col])
+            print('*'*10, category_names[col], '*'*10)
+            print(score)
 
         print('Saving model...\n    MODEL: {}'.format(model_filepath))
-        best_model = max(results, key=results.get)
-        model = models[best_model]
         save_model(model, model_filepath)
-        print('/t...best model: {}'.format(best_model))
-
-        print('Trained model saved!')
 
     else:
         print('Please provide the filepath of the disaster messages database '\

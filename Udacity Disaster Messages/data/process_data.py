@@ -5,6 +5,10 @@ import re
 from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
+    '''
+    INPUT: the messages and categories datasets filepaths
+    OUTPUT: a join of the two datasets
+    '''
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
     messages.drop_duplicates(subset='id', keep='first', inplace=True)
@@ -13,6 +17,10 @@ def load_data(messages_filepath, categories_filepath):
     return combined_dataset
 
 def clean_data(df):
+    '''
+    INPUT: the raw twitter dataset
+    OUTPUT: a cleaned version of the twitter dataset
+    '''
     expanded_categories = df['categories'].str.split(pat=';', expand=True)
     colnames = [var.split('-')[0] for var in expanded_categories.iloc[0,:].tolist()]
     expanded_categories.columns = colnames
@@ -25,12 +33,19 @@ def clean_data(df):
     cleaned_dataset = df.merge(expanded_categories, left_index=True, right_index=True)
 
     def strip_url(string):
+        '''
+        INPUT: a string
+        OUTPUT: a string which has had all URLs removed
+        '''
         return re.sub('www\\..+\\.', '', string)
 
     cleaned_dataset['message'] = cleaned_dataset['message'].map(strip_url)
     return cleaned_dataset
 
 def save_data(df, database_filename):
+    '''
+    INPUT: a dataframe and database filename
+    '''
     engine_location = 'sqlite:///' + database_filename
     engine = create_engine(engine_location, echo=False)
     df.to_sql('DisasterResponse', con=engine, if_exists='replace')

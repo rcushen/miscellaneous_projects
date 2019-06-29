@@ -23,3 +23,9 @@ To build the app, follow these instructions:
     `python run.py`
 
 3. Go to http://0.0.0.0:3001/
+
+## Modelling Details
+
+The modelling approach taken in this project is split into two steps: feature extraction and classification.
+1. **Feature extraction**. Using the 30,000 tweets as input, a bag-of-words representation is constructed, yielding a document-term matrix $D$ in which each row is a tweet and each column is a word. The value in each position of this matrix then signifies the importance of that word relative to the broader corpus of tweets, and is calculated using the tf-idf transformation.
+2. **Classification**. Having constructed a numerical representation $D$ of the tweets dataset, a machine learning model can be trained. Three techniques are explored: Naive Bayes, Logistic Regression, and a Linear Support Vector Machine. Since there are 36 possible classes, each of these models must be trained 36 times. The ```OneVsRestClassifier``` is used to this end. The Linear SVC is found to perform best on a held-out test set, and grid search is then used to optimise hyperparameters before the model is saved for use in production.
