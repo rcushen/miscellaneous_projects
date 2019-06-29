@@ -57,7 +57,7 @@ def build_model():
                          ('tfidf', TfidfTransformer()),
                          ('clf', OneVsRestClassifier(LinearSVC(dual=False)))])
     param_grid = {
-        'clf__estimator__C': [1, 0.01, 0.001],
+        'clf__estimator__C': [1, 0.01, 0.001, 0.0001],
         'clf__estimator__tol': [0.001, 0.0001, 0.00001]
     }
     search = GridSearchCV(pipeline, param_grid, iid=False, cv=3, verbose=1)
@@ -80,7 +80,7 @@ def main():
 
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
         X, Y, category_names = load_data(database_filepath)
-        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3)
+        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
         print('Building model...')
         model = build_model()
@@ -90,10 +90,8 @@ def main():
 
         print('Evaluating models...')
         test_preds = model.predict(X_test)
-        for col in range(test_preds.shape[1]):
-            score = classification_report(Y_test[:,col], test_preds[:,col])
-            print('*'*10, category_names[col], '*'*10)
-            print(score)
+        scores = classification_report(Y_test, test_preds)
+        print(scores)
 
         print('Saving model...\n    MODEL: {}'.format(model_filepath))
         save_model(model, model_filepath)
